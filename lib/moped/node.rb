@@ -111,8 +111,10 @@ module Moped
     #
     # @since 2.0.0
     def connection
-      pool.with do |conn|
-        yield(conn)
+      Connection::Manager::MUTEX.synchronize do
+        pool.with do |conn|
+          yield(conn)
+        end
       end
     end
 
@@ -629,7 +631,7 @@ module Moped
     #
     # @since 2.0.0
     def pool
-      @pool ||= Connection::Manager.pool(self)
+      Connection::Manager.pool(self)
     end
 
     # Execute a read operation.

@@ -30,9 +30,9 @@ module Moped
       #
       # @since 2.0.0
       def pool(node)
-        MUTEX.synchronize do
+#        MUTEX.synchronize do
           pools[node.address.resolved] ||= create_pool(node)
-        end
+#        end
       end
 
       # Shutdown the connection pool for the provided node. In the case of
