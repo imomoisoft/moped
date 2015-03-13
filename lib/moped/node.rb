@@ -111,11 +111,12 @@ module Moped
     #
     # @since 2.0.0
     def connection
-      Connection::Manager::MUTEX.synchronize do
-        pool.with do |conn|
-          yield(conn)
-        end
-      end
+      Thread.current[address.resolved] ||= Connection.new(address.ip,
+                                   address.port,
+                                   options[:timeout] || Connection::TIMEOUT,
+                                   options
+                                  )
+      yield Thread.current[address.resolved]
     end
 
     # Is the node down?
@@ -139,7 +140,10 @@ module Moped
     #
     # @since 1.2.0
     def disconnect
-      connection{ |conn| conn.disconnect }
+      return true unless address.resolved
+      connection_to_disconnect = Thread.current[address.resolved]
+      Thread.current[address.resolved]  = nil
+      connection_to_disconnect.disconnect if connection_to_disconnect
       true
     end
 
@@ -153,9 +157,10 @@ module Moped
     # @since 2.0.0
     def down!
       @down_at = Time.new
-      @pool = nil
+      # @pool = nil
       @latency = nil
-      Connection::Manager.shutdown(self)
+      disconnect
+      # Connection::Manager.shutdown(self)
     end
 
     # Yields the block if a connection can be established, retrying when a
@@ -630,9 +635,9 @@ module Moped
     # @return [ Connection::Pool ] The connection pool.
     #
     # @since 2.0.0
-    def pool
-      Connection::Manager.pool(self)
-    end
+    # def pool
+    #   Connection::Manager.pool(self)
+    # end
 
     # Execute a read operation.
     #
